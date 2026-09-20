@@ -29,10 +29,39 @@ dsh plugin --profile web add github:YEJASONJIEXIN/dsh-whale-girl-pet
 如果这台机器上已经有官方 `dsh-whale-girl-pet`，上面的命令会把依赖替换成你的仓库版本，
 `bundles` 里那一条本来就在，不会重复。
 
-### 网络受限时（本机就是这种情况）
+### 报错排查（按报错原文对号入座）
 
-`github:` 走的是 `git clone`，而很多网络下 `github.com:443` 是被拦的。若报
-`Connection was reset` / `Could not connect to server`，让 git 走 SSH over 443：
+`dsh plugin add github:...` 底下是 pnpm 在跑 `git ls-remote https://github.com/...`。
+**它固定走 HTTPS**（pnpm 的 help 里明说：为了 lockfile 在任何机器都能用，它不询问 SSH），
+所以下面两类问题都会在这里炸出来。
+
+#### ① `SSL certificate problem: unable to get local issuer certificate`
+
+这条和网络拦截无关，是**证书链验证失败**。在 Windows 上通常是 git 自带的 OpenSSL
+没有可用的 CA 根证书（或者内网做了 HTTPS 解密、把自家根证书装进了 Windows 证书库，
+而 git 的 OpenSSL 读不到那个库）。两个修法，任选其一：
+
+```sh
+# 修法 A（最简单）：让 git 改用 Windows 系统证书库，而不是它自带的 CA 包
+git config --global http.sslBackend schannel
+```
+
+```sh
+# 修法 B：让 git 把 HTTPS 地址重写成 SSH 再连（pnpm 的报错里也推荐这条）
+# 前提：SSH 已经能连 GitHub（见下面 ② 的后半段）且公钥已加到账号
+git config --global url."git@github.com:".insteadOf "https://github.com/"
+```
+
+修法 B 的好处是**只改本机的 git 行为，不改 pnpm 记录的地址**，lockfile 里仍然是
+标准 HTTPS URL，不会污染其它机器。
+
+> 注意：不要用 `git config --global http.sslVerify false` 图省事。那会关掉证书校验，
+> 等于对中间人攻击不设防，是安全隐患，别在长期使用的机器上这么干。
+
+#### ② `Connection was reset` / `Could not connect to server` / 连不上 443
+
+这是**网络层真的到不了 github.com:443**（本开发机就是这种：443 被拦，只有 SSH 通）。
+让 SSH 走 443 端口：
 
 ```
 # ~/.ssh/config
@@ -45,17 +74,36 @@ Host github.com
 
 Windows 上还有一个坑：**git 自带的 ssh**（`D:\Program Files\Git\usr\bin\ssh.exe`）
 可能读不到你的 `~/.ssh/config`（它把 `~` 解析到别处），表现是"配了还连 22 端口"。
-让 git 改用系统 OpenSSH 即可：
+让 git 改用系统 OpenSSH：
 
 ```sh
 git config --global core.sshCommand '"C:/Windows/System32/OpenSSH/ssh.exe"'
 ```
 
-也可以改用 SSH 形式的地址绕过这个问题：
+然后把 ① 的**修法 B** 打开（把 HTTPS 重写成 SSH）——因为 pnpm 只会走 HTTPS，
+不重写就永远到不了 SSH 这条通路。
+
+#### 顺序建议
+
+先跑这条自检，看看到底卡在哪一层：
 
 ```sh
-dsh plugin --profile web add "git+ssh://git@github.com/YEJASONJIEXIN/dsh-whale-girl-pet.git"
+git ls-remote https://github.com/YEJASONJIEXIN/dsh-whale-girl-pet.git HEAD
 ```
+
+- 报 **SSL certificate problem** → 用 ① 的修法 A；
+- 报 **Connection was reset / Could not connect** → 按 ② 配 SSH + 修法 B；
+- 打印出一个 40 位 sha → 网络没问题，直接重跑 `dsh plugin add` 即可。
+
+#### 关于 `allowBuilds` 提示
+
+如果 pnpm 还提示 `git-hosted plugins build on install via their prepare script`：
+本仓库的 `package.json` **没有 `prepare` 脚本**，属于 pnpm 的通用提示，可以忽略。
+真被拦住时，按它打印的确切 key 加进 `<profile>/pnpm-workspace.yaml` 的 `allowBuilds` 再重跑。
+
+#### 兜底：完全绕开 GitHub
+
+若上面都走不通，用本地 tarball / git bundle（见下面两节），一条网络请求都不需要。
 
 ---
 
