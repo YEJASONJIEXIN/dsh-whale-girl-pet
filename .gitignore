@@ -30,3 +30,7 @@ npm-debug.log*
 #
 # 想连素材一起提交？把下面这行删掉或改成 !assets/ 即可。
 assets/
+
+# 本地打包产物（发给别人用的，不进仓库）
+dsh-whale-girl-pet-hutao.bundle
+
