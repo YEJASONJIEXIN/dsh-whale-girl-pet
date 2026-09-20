@@ -1,5 +1,7 @@
 # 安装到另一台电脑
 
+仓库地址：**https://github.com/YEJASONJIEXIN/dsh-whale-girl-pet**
+
 三种方式，按需要挑一种。
 
 ---
@@ -11,6 +13,8 @@
 ```
 dsh-whale-girl-pet-0.3.2-fork.1.tgz   （约 27 MB，含全部动画素材）
 ```
+
+这个文件不在仓库里（26 MB 二进制不适合进 git），从打包好的位置拷过去即可。
 
 在另一台电脑上：
 
@@ -50,7 +54,56 @@ dsh plugin --profile web add "D:\path\to\dsh-whale-girl-pet-0.3.2-fork.1.tgz"
 
 ---
 
-## 方式 B：直接把目录拷过去
+## 方式 B：从 GitHub 克隆
+
+```sh
+git clone git@github.com:YEJASONJIEXIN/dsh-whale-girl-pet.git dsh-whale-girl-pet-hutao
+cd dsh-whale-girl-pet-hutao
+```
+
+**仓库里没有动画素材**（`assets/` 被 .gitignore 排除，见其注释说明），要装的话得先补上：
+
+```sh
+# 从 tarball 里取回素材
+tar -xzf dsh-whale-girl-pet-0.3.2-fork.1.tgz
+cp -r package/assets ./assets
+```
+
+然后装进 profile：
+
+```sh
+dsh plugin --profile web add "file:$(pwd)"
+# 同样记得把 dsh-whale-girl-pet 加进 package.json 的 dsh.profile.bundles
+```
+
+重启 `dsh web` + 刷新页面。
+
+### 网络受限时（本机就是这样）
+
+这台开发机上 `github.com:443` 被拦，只有 SSH 通，且 SSH 走 443 端口才稳。如果你也遇到
+`Connection was reset` / `Could not connect to server`，在 `~/.ssh/config` 里加：
+
+```
+Host github.com
+  HostName ssh.github.com
+  Port 443
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+```
+
+另外 **git 自带的 ssh**（`D:\Program Files\Git\usr\bin\ssh.exe`）在 Windows 上可能读不到
+你的 `~/.ssh/config`（它会把 `~` 解析到别处），表现为"明明配了还走 22 端口"。
+解决办法是让 git 用系统自带的 OpenSSH：
+
+```sh
+git config --global core.sshCommand '"C:/Windows/System32/OpenSSH/ssh.exe"'
+```
+
+（本项目仓库级已经配好这一条，见 `.git/config` 的 `core.sshCommand`。）
+
+---
+
+## 方式 C：直接把目录拷过去
 
 如果懒得折腾 tarball，也可以手工复制安装：
 
@@ -63,21 +116,6 @@ dsh plugin --profile web add "D:\path\to\dsh-whale-girl-pet-0.3.2-fork.1.tgz"
 5. 重启 `dsh web`
 
 手工拷出来的目录不会被 pnpm 管理，`pnpm install` 时可能被清掉——要长期用建议走方式 A。
-
----
-
-## 方式 C：从源码目录装
-
-如果你把本仓库 `git clone` 到了另一台电脑：
-
-```sh
-git clone <你的仓库地址> dsh-whale-girl-pet-hutao
-cd dsh-whale-girl-pet-hutao
-
-# 仓库里不含动画素材（见 .gitignore 说明），先从 tarball 或上游取回 assets/
-# 然后：
-dsh plugin --profile web add "file:$(pwd)"
-```
 
 ---
 
