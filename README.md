@@ -329,13 +329,6 @@ node --test "test/*.test.mjs"     # 跑单测（76 项，零依赖，只用 node
 
 ---
 
-## 🪙 请 DeepSeek 吃口 Token
-
-喜欢这只桌宠的话，可以投喂她吃口 Token（完全自愿，不影响任何功能）～
-
-<img src="https://raw.githubusercontent.com/yanzwzz/dsh-whale-girl-pet/main/assets/preview/qr-donate.png" width="180" alt="投喂 Token">
-
----
 
 ## 🎞️ 制作新动画
 
