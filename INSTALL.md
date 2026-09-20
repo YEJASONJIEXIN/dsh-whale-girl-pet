@@ -37,23 +37,67 @@ dsh plugin --profile web add github:YEJASONJIEXIN/dsh-whale-girl-pet
 
 #### ① `SSL certificate problem: unable to get local issuer certificate`
 
-这条和网络拦截无关，是**证书链验证失败**。在 Windows 上通常是 git 自带的 OpenSSL
-没有可用的 CA 根证书（或者内网做了 HTTPS 解密、把自家根证书装进了 Windows 证书库，
-而 git 的 OpenSSL 读不到那个库）。两个修法，任选其一：
+这条和网络拦截无关，是**证书链验证失败**。
+
+**先判断证书链是谁提供的**——这决定了该用哪个修法：
 
 ```sh
-# 修法 A（最简单）：让 git 改用 Windows 系统证书库，而不是它自带的 CA 包
+git config --get http.sslBackend
+```
+
+| 结果 | 含义 | 该怎么办 |
+|---|---|---|
+| 空 | git 用**自带的 OpenSSL + CA 包** | 改用 Windows 证书库（修法 A） |
+| `schannel` | git 已经在用 **Windows 证书库** | 修法 A 无效！直接跳修法 B |
+
+修法 A（只对"空"那种情况有效）：
+
+```sh
 git config --global http.sslBackend schannel
 ```
 
+修法 B（**两种都有效，实测推荐**）：让 git 把 HTTPS 地址重写成 SSH。
+pnpm 的报错里也是这么建议的，而且它**只改本机 git 行为、不改 pnpm 记录的地址**，
+lockfile 里仍是标准 HTTPS URL，不会污染别的机器：
+
 ```sh
-# 修法 B：让 git 把 HTTPS 地址重写成 SSH 再连（pnpm 的报错里也推荐这条）
-# 前提：SSH 已经能连 GitHub（见下面 ② 的后半段）且公钥已加到账号
 git config --global url."git@github.com:".insteadOf "https://github.com/"
 ```
 
-修法 B 的好处是**只改本机的 git 行为，不改 pnpm 记录的地址**，lockfile 里仍然是
-标准 HTTPS URL，不会污染其它机器。
+> **但光这一条通常不够**（实测踩过）：重写成 SSH 之后，git 会用它**自带**的
+> `ssh.exe`（`D:\Program Files\Git\usr\bin\ssh.exe`），而那个 ssh 在 Windows 上
+> 读不到你的 `~/.ssh/config`，会把 `~` 解析到别处 —— 于是它直接去连 `github.com:22`
+> 并报 `ssh: connect to host github.com port 22`。必须同时指定系统 OpenSSH：
+
+```sh
+git config --global core.sshCommand '"C:/Windows/System32/OpenSSH/ssh.exe"'
+```
+
+**所以要一起给你三条（这是本机与另一台机器都实测通过的完整组合）：**
+
+```sh
+# 1) SSH 走 443：写进 ~/.ssh/config
+#    Host github.com
+#      HostName ssh.github.com
+#      Port 443
+#      User git
+#      IdentityFile ~/.ssh/id_ed25519
+
+# 2) 让 git 用系统 OpenSSH（否则读不到上面那段配置，会去连 22 端口）
+git config --global core.sshCommand '"C:/Windows/System32/OpenSSH/ssh.exe"'
+
+# 3) 把 HTTPS 重写成 SSH（绕过证书链问题）
+git config --global url."git@github.com:".insteadOf "https://github.com/"
+```
+
+改完先自检，再装：
+
+```sh
+ssh -T git@github.com         # 应打印 Hi <你的用户名>!
+dsh plugin --profile web add github:YEJASONJIEXIN/dsh-whale-girl-pet
+```
+
+（已实测这条组合：装完 `assets/thumb` 50 个 webm 就位、`bundles` 自动登记。）
 
 > 注意：不要用 `git config --global http.sslVerify false` 图省事。那会关掉证书校验，
 > 等于对中间人攻击不设防，是安全隐患，别在长期使用的机器上这么干。
