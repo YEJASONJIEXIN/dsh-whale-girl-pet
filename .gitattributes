@@ -1,0 +1,14 @@
+# 统一换行：仓库里一律存 LF，检出时也不要自动改成 CRLF。
+# 否则 Windows 上 clone 出来的 JS 会和发布的 tarball 不一致，
+# 而且每次 git 操作都刷一堆 "LF will be replaced by CRLF" 警告。
+* text=auto eol=lf
+
+# 二进制资源不做换行转换
+*.webm binary
+*.webp binary
+*.png binary
+*.ico binary
+*.tgz binary
+
+# 动画与预览素材：git diff / 语言统计里不显示
+assets/** linguist-generated=true -diff

@@ -1,0 +1,32 @@
+# 依赖与构建产物（没人该提交这些）
+node_modules/
+*.tgz
+*.tar
+*.tar.gz
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+.pnpm-debug.log*
+
+# ----------------------------------------------------------------------------
+# 动画素材（assets/）默认**不提交**，原因有三：
+#   1. 他们是上游 dsh-whale-girl-pet（作者 yanzwzz）的原创美术资源，
+#      MIT 允许再分发，但这里选择不去仓库里替别人分发，避免混淆来源；
+#   2. 50 个 WebM 约 26 MB，塞进 git 历史会让仓库变得又大又难克隆；
+#   3. 需要素材的人从 tarball 或上游 npm 包取即可（见 INSTALL.md）。
+#
+# 于是：仓库只放代码。想从源码装的话，先取回素材再打包装：
+#   - 取素材：解开 dsh-whale-girl-pet-0.3.2-fork.1.tgz，把 package/assets/ 拷到本目录
+#   - 或者：从上游装官方包，再把它 node_modules 里的 assets/ 拷过来
+#   - 打包：  node scripts/pack.mjs .
+#
+# 想连素材一起提交？把下面这行删掉或改成 !assets/ 即可。
+assets/
